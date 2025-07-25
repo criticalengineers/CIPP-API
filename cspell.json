@@ -4,6 +4,7 @@
   "dictionaryDefinitions": [],
   "dictionaries": [],
   "words": [
+    "adminapi",
     "ADMS",
     "AITM",
     "Autotask",
@@ -14,15 +15,20 @@
     "Connectwise",
     "CPIM",
     "Datto",
+    "Dmarc",
+    "DMARC",
     "endswith",
     "entra",
     "Entra",
+    "exploitability",
     "gdap",
     "GDAP",
     "IMAP",
+    "innererror",
     "Intune",
     "locationcipp",
     "MAPI",
+    "MSCNAME",
     "Multitenant",
     "OBEE",
     "passwordless",
@@ -39,8 +45,7 @@
     "TNEF",
     "weburl",
     "winmail",
-    "Yubikey",
-    "DMARC"
+    "Yubikey"
   ],
   "ignoreWords": [
     "ACOM",
