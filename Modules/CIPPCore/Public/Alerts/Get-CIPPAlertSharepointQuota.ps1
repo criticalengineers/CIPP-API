@@ -4,15 +4,18 @@ function Get-CIPPAlertSharepointQuota {
         Entrypoint
     #>
     [CmdletBinding()]
-    Param (
+    param (
         [Parameter(Mandatory = $false)]
         [Alias('input')]
         $InputValue,
         $TenantFilter
     )
-    Try {
-        $SharePointInfo = Get-SharePointAdminLink -Public $false
-        $sharepointQuota = (New-GraphGetRequest -scope "$($SharePointInfo.AdminUrl)/.default" -tenantid $TenantFilter -uri "$($SharePointInfo.AdminUrl)/_api/StorageQuotas()?api-version=1.3.2").value
+    try {
+        $SharePointInfo = Get-SharePointAdminLink -Public $false -tenantFilter $TenantFilter
+        $extraHeaders = @{
+            'Accept' = 'application/json'
+        }
+        $sharepointQuota = (New-GraphGetRequest -extraHeaders $extraHeaders -scope "$($SharePointInfo.AdminUrl)/.default" -tenantid $TenantFilter -uri "$($SharePointInfo.AdminUrl)/_api/StorageQuotas()?api-version=1.3.2")
     } catch {
         return
     }
@@ -24,7 +27,13 @@ function Get-CIPPAlertSharepointQuota {
         }
         $UsedStoragePercentage = [int](($sharepointQuota.GeoUsedStorageMB / $sharepointQuota.TenantStorageMB) * 100)
         if ($UsedStoragePercentage -gt $Value) {
-            $AlertData = "SharePoint Storage is at $($UsedStoragePercentage)% [$([math]::Round($sharepointQuota.GeoUsedStorageMB / 1024, 2)) GB/$([math]::Round($sharepointQuota.TenantStorageMB / 1024, 2)) GB]. Your alert threshold is $($Value)%"
+            $AlertData = [PSCustomObject]@{
+                UsedStoragePercentage = $UsedStoragePercentage
+                StorageUsed           = ([math]::Round($sharepointQuota.GeoUsedStorageMB / 1024, 2))
+                StorageQuota          = ([math]::Round($sharepointQuota.TenantStorageMB / 1024, 2))
+                AlertQuotaThreshold   = $Value
+                Tenant                = $TenantFilter
+            }
             Write-AlertTrace -cmdletName $MyInvocation.MyCommand -tenantFilter $TenantFilter -data $AlertData
         }
     }
