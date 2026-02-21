@@ -29,7 +29,7 @@ function Set-CIPPSPOTenant {
 
     #>
     [CmdletBinding(SupportsShouldProcess = $true)]
-    Param(
+    param(
         [Parameter(ValueFromPipelineByPropertyName = $true, Mandatory = $true)]
         [string]$TenantFilter,
         [Parameter(ValueFromPipelineByPropertyName = $true, Mandatory = $true)]
@@ -44,7 +44,7 @@ function Set-CIPPSPOTenant {
     process {
         if (!$SharepointPrefix) {
             # get sharepoint admin site
-            $SharePointInfo = Get-SharePointAdminLink -Public $false
+            $SharePointInfo = Get-SharePointAdminLink -Public $false -tenantFilter $TenantFilter
             $AdminUrl = $SharePointInfo.AdminUrl
         } else {
             $tenantName = $SharepointPrefix
@@ -65,7 +65,7 @@ function Set-CIPPSPOTenant {
                 }
                 $xml = @"
     <SetProperty Id="$x" ObjectPathId="110" Name="$Property">
-        <Parameter Type="Boolean">$($PropertyToSet)</Parameter>
+        <Parameter Type="$PropertyType">$($PropertyToSet)</Parameter>
     </SetProperty>
 "@
                 $SetProperty.Add($xml)

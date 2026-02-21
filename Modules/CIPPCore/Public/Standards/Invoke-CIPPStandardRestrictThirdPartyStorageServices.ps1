@@ -13,7 +13,9 @@ function Invoke-CIPPStandardRestrictThirdPartyStorageServices {
         CAT
             Global Standards
         TAG
-            "CIS"
+            "CIS M365 5.0 (1.3.7)"
+        EXECUTIVETEXT
+            Prevents employees from using external cloud storage services like Dropbox, Google Drive, and Box within Microsoft 365, reducing data security risks and ensuring all company data remains within controlled corporate systems. This helps maintain data governance and prevents potential data leaks to unauthorized platforms.
         ADDEDCOMPONENT
         IMPACT
             Medium Impact
@@ -30,7 +32,11 @@ function Invoke-CIPPStandardRestrictThirdPartyStorageServices {
     #>
 
     param ($Tenant, $Settings)
-    ##$Rerun -Type Standard -Tenant $Tenant -Settings $Settings 'RestrictThirdPartyStorageServices'
+    $TestResult = Test-CIPPStandardLicense -StandardName 'ThirdPartyStorageServicesRestricted' -TenantFilter $Tenant -RequiredCapabilities @('SHAREPOINTWAC', 'SHAREPOINTSTANDARD', 'SHAREPOINTENTERPRISE', 'SHAREPOINTENTERPRISE_EDU', 'ONEDRIVE_BASIC', 'ONEDRIVE_ENTERPRISE')
+
+    if ($TestResult -eq $false) {
+        return $true
+    } #we're done.
 
     $AppId = 'c1f33bc0-bdb4-4248-ba9b-096807ddb43e'
     $Uri = "https://graph.microsoft.com/beta/servicePrincipals?`$filter=appId eq '$AppId'"
@@ -40,12 +46,10 @@ function Invoke-CIPPStandardRestrictThirdPartyStorageServices {
     } catch {
         $ErrorMessage = Get-CippException -Exception $_
         Write-LogMessage -API 'Standards' -tenant $Tenant -message "Could not get current state for Microsoft 365 on the web service principal. Error: $($ErrorMessage.NormalizedError)" -sev Error -LogData $ErrorMessage
-        Return
+        return
     }
 
     if ($Settings.remediate -eq $true) {
-        Write-Host 'Time to remediate third-party storage services restriction'
-
         # Check if service principal is already disabled
         if ($CurrentState.accountEnabled -eq $false) {
             Write-LogMessage -API 'Standards' -tenant $Tenant -message 'Third-party storage services are already restricted (service principal is disabled).' -sev Info
@@ -59,7 +63,7 @@ function Invoke-CIPPStandardRestrictThirdPartyStorageServices {
                 # Normal /servicePrincipal/AppId does not find the service principal, so gotta use the Upsert method. Also handles if the service principal does not exist nicely.
                 # https://learn.microsoft.com/en-us/graph/api/serviceprincipal-upsert?view=graph-rest-beta&tabs=http
                 $UpdateUri = "https://graph.microsoft.com/beta/servicePrincipals(appId='$AppId')"
-                $null = New-GraphPostRequest -Uri $UpdateUri -Body $DisableBody -TenantID $Tenant -Type PATCH
+                $null = New-GraphPostRequest -Uri $UpdateUri -Body $DisableBody -TenantID $Tenant -Type PATCH -AddedHeaders @{'Prefer' = 'create-if-missing' }
 
                 # Refresh the current state after disabling
                 $CurrentState = New-GraphGetRequest -Uri $Uri -tenantid $Tenant | Select-Object displayName, accountEnabled, appId
@@ -81,13 +85,15 @@ function Invoke-CIPPStandardRestrictThirdPartyStorageServices {
     }
 
     if ($Settings.report -eq $true) {
-        if ($null -eq $CurrentState.accountEnabled -or $CurrentState.accountEnabled -eq $true) {
-            Set-CIPPStandardsCompareField -FieldName 'standards.RestrictThirdPartyStorageServices' -FieldValue $false -Tenant $Tenant
-            Add-CIPPBPAField -FieldName 'ThirdPartyStorageServicesRestricted' -FieldValue $false -StoreAs bool -Tenant $Tenant
-        } else {
-            $CorrectState = $CurrentState.accountEnabled -eq $false ? $true : $false
-            Set-CIPPStandardsCompareField -FieldName 'standards.RestrictThirdPartyStorageServices' -FieldValue $CorrectState -Tenant $Tenant
-            Add-CIPPBPAField -FieldName 'ThirdPartyStorageServicesRestricted' -FieldValue $CorrectState -StoreAs bool -Tenant $Tenant
+
+        $CurrentValue = @{
+            thirdPartyStorageRestricted = $CurrentState.accountEnabled -eq $false
         }
+        $ExpectedValue = @{
+            thirdPartyStorageRestricted = $true
+        }
+
+        Set-CIPPStandardsCompareField -FieldName 'standards.RestrictThirdPartyStorageServices' -CurrentValue $CurrentValue -ExpectedValue $ExpectedValue -TenantFilter $Tenant
+        Add-CIPPBPAField -FieldName 'ThirdPartyStorageServicesRestricted' -FieldValue ($CurrentState.accountEnabled -eq $false) -StoreAs bool -Tenant $Tenant
     }
 }

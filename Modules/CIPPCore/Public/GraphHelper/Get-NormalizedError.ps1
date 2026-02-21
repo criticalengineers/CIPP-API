@@ -43,13 +43,19 @@ function Get-NormalizedError {
         'Response status code does not indicate success: 400 (Bad Request).' { 'Error 400 occured. There is an issue with the token configuration for this tenant. Please perform an access check' }
         '*Microsoft.Skype.Sync.Pstn.Tnm.Common.Http.HttpResponseException*' { 'Could not connect to Teams Admin center - Tenant might be missing a Teams license' }
         '*Provide valid credential.*' { 'Error 400: There is an issue with your Exchange Token configuration. Please perform an access check for this tenant' }
-        '*This indicate that a subscription within the tenant has lapsed*' { 'There is subscription for this service available, Check licensing information.' }
+        '*This indicate that a subscription within the tenant has lapsed*' { 'There is no subscription for this service available, Check licensing information.' }
         '*User was not found.*' { 'The relationship between this tenant and the partner has been dissolved from the tenant side.' }
         '*AADSTS50020*' { 'AADSTS50020: The user you have used for your Secure Application Model is a guest in this tenant, or your are using GDAP and have not added the user to the correct group. Please delete the guest user to gain access to this tenant' }
         '*AADSTS50177' { 'AADSTS50177: The user you have used for your Secure Application Model is a guest in this tenant, or your are using GDAP and have not added the user to the correct group. Please delete the guest user to gain access to this tenant' }
         '*invalid or malformed*' { 'The request is malformed. Have you finished the Setup Wizard' }
         '*Windows Store repository apps feature is not supported for this tenant*' { 'This tenant does not have WinGet support available' }
-        '*AADSTS650051*' { 'The application does not exist yet. Try again in 30 seconds.' }
+        '*AADSTS650051*' {
+            if ($Message -like '*service principal name is already present*') {
+                'The application service principal already exists in this tenant. This is expected and not an error.'
+            } else {
+                'The application does not exist yet. Try again in 30 seconds.'
+            }
+        }
         '*AppLifecycle_2210*' { 'Failed to call Intune APIs: Does the tenant have a license available?' }
         '*One or more added object references already exist for the following modified properties:*' { 'This user is already a member of this group.' }
         '*Microsoft.Exchange.Management.Tasks.MemberAlreadyExistsException*' { 'This user is already a member of this group.' }
